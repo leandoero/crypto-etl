@@ -1,28 +1,32 @@
-import psycopg2
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Table, Column, Text, Float, BigInteger, DateTime, MetaData
 
-pf = pd.read_csv("data.csv")
+# Чтение данных
+try:
+    pf = pd.read_csv("data.csv")
+except FileNotFoundError:
+    print("Файл data.csv не найден!")
+    exit(1)
+
+# Создание подключения через SQLAlchemy
 engine = create_engine("postgresql+psycopg2://postgres:7535@localhost:5432/postgres")
-conn = psycopg2.connect(dbname="postgres", user="postgres", password="7535", host="localhost", port="5432")
 
-cursor = conn.cursor()
-conn.autocommit = True
+# Определение структуры таблицы
+metadata = MetaData()
+coins = Table('coins', metadata,
+              Column('id', Text, primary_key=True),
+              Column('symbol', Text),
+              Column('name', Text),
+              Column('current_price', Float),
+              Column('market_cap', BigInteger),
+              Column('price_change_percentage_24h', Float),
+              Column('last_updated', DateTime))
 
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS coins (
-    id TEXT PRIMARY KEY,
-    symbol TEXT,
-    name TEXT,
-    current_price FLOAT,
-    market_cap BIGINT,
-    price_change_percentage_24h FLOAT,
-    last_updated TIMESTAMP
-);   
-""")
+# Создание таблицы
+metadata.create_all(engine)
 
+# Запись данных в таблицу
 pf.to_sql('coins', engine, if_exists='replace', index=False)
 
-cursor.close()
-
-conn.close()
+# Освобождение ресурсов
+engine.dispose()
